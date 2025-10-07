@@ -39,7 +39,7 @@ public class TimerCommands implements CommandExecutor {
             case "off":
                 plugin.getTimerBossBar().setVisible(false);
                 plugin.setTimeElapsedSeconds(0);
-                plugin.setTimerRunning(false); // Sicherheitshalber auch stoppen
+                plugin.setTimerRunning(false);
                 sender.sendMessage(ChatColor.GREEN + "Timer wurde ausgeblendet und zurückgesetzt.");
                 break;
             case "start":
@@ -67,7 +67,7 @@ public class TimerCommands implements CommandExecutor {
                 sender.sendMessage(ChatColor.RED + "Unbekannter Befehl. Verwendung: /timer <on|off|start|stop|reset>");
                 break;
         }
-        plugin.checkConditionsAndPause(); // Nach jeder Aktion die Bedingungen prüfen
+        plugin.checkConditionsAndPause();
         return true;
     }
 
@@ -85,7 +85,7 @@ public class TimerCommands implements CommandExecutor {
             }
             plugin.setRequiredPlayers(numPlayers);
             sender.sendMessage(ChatColor.GREEN + "Timer-Modus auf " + numPlayers + " Spieler gesetzt.");
-            plugin.checkConditionsAndPause(); // Direkt die Bedingungen prüfen
+            plugin.checkConditionsAndPause();
         } catch (NumberFormatException e) {
             sender.sendMessage(ChatColor.RED + "Das ist keine gültige Zahl.");
         }
