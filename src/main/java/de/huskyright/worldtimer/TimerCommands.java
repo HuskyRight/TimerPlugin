@@ -69,11 +69,73 @@ public class TimerCommands implements CommandExecutor, TabCompleter {
                 plugin.updateTimerDisplay();
                 sender.sendMessage(ChatColor.GREEN + "Timer wurde zurückgesetzt.");
                 break;
+            case "exclude":
+                return handleExcludeCommand(sender, args);
             default:
-                sender.sendMessage(ChatColor.RED + "Unbekannter Befehl. Verwendung: /timer <on|off|start|stop|reset>");
+                sender.sendMessage(ChatColor.RED + "Unbekannter Befehl. Verwendung: /timer <on|off|start|stop|reset|exclude>");
                 break;
         }
         plugin.checkConditionsAndPause();
+        return true;
+    }
+
+    private boolean handleExcludeCommand(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage(ChatColor.RED + "Verwendung: /timer exclude <Spieler|list|add|remove>");
+            return true;
+        }
+
+        String sub = args[1];
+        if (sub.equalsIgnoreCase("list")) {
+            java.util.Set<String> excluded = plugin.getExcludedPlayers();
+            if (excluded.isEmpty()) {
+                sender.sendMessage(ChatColor.YELLOW + "Es sind derzeit keine Spieler vom Timer ausgeschlossen.");
+            } else {
+                sender.sendMessage(ChatColor.GOLD + "=== Vom Timer ausgeschlossene Spieler ===");
+                for (String name : excluded) {
+                    sender.sendMessage(ChatColor.YELLOW + "- " + ChatColor.WHITE + name);
+                }
+            }
+            return true;
+        }
+
+        if (sub.equalsIgnoreCase("add")) {
+            if (args.length < 3) {
+                sender.sendMessage(ChatColor.RED + "Verwendung: /timer exclude add <Spieler>");
+                return true;
+            }
+            String target = args[2];
+            if (plugin.addExcludedPlayer(target)) {
+                sender.sendMessage(ChatColor.GREEN + "Spieler '" + ChatColor.YELLOW + target + ChatColor.GREEN + "' wurde zur Ausschlussliste hinzugefügt (kann sich bei Pause frei bewegen).");
+            } else {
+                sender.sendMessage(ChatColor.YELLOW + "Spieler '" + target + "' ist bereits ausgeschlossen.");
+            }
+            return true;
+        }
+
+        if (sub.equalsIgnoreCase("remove")) {
+            if (args.length < 3) {
+                sender.sendMessage(ChatColor.RED + "Verwendung: /timer exclude remove <Spieler>");
+                return true;
+            }
+            String target = args[2];
+            if (plugin.removeExcludedPlayer(target)) {
+                sender.sendMessage(ChatColor.GREEN + "Spieler '" + ChatColor.YELLOW + target + ChatColor.GREEN + "' wurde von der Ausschlussliste entfernt.");
+            } else {
+                sender.sendMessage(ChatColor.YELLOW + "Spieler '" + target + "' war nicht ausgeschlossen.");
+            }
+            return true;
+        }
+
+        // Direct toggle: /timer exclude <username>
+        String target = sub;
+        if (plugin.isPlayerExcluded(target)) {
+            plugin.removeExcludedPlayer(target);
+            sender.sendMessage(ChatColor.GREEN + "Spieler '" + ChatColor.YELLOW + target + ChatColor.GREEN + "' ist nun nicht mehr vom Timer befreit.");
+        } else {
+            plugin.addExcludedPlayer(target);
+            sender.sendMessage(ChatColor.GREEN + "Spieler '" + ChatColor.YELLOW + target + ChatColor.GREEN + "' wurde vom Timer befreit (kann sich bei Pause frei bewegen).");
+        }
         return true;
     }
 
@@ -102,7 +164,7 @@ public class TimerCommands implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (command.getName().equalsIgnoreCase("timer")) {
             if (args.length == 1) {
-                List<String> subs = List.of("on", "off", "start", "stop", "reset");
+                List<String> subs = List.of("on", "off", "start", "stop", "reset", "exclude");
                 List<String> result = new ArrayList<>();
                 for (String s : subs) {
                     if (s.toLowerCase().startsWith(args[0].toLowerCase())) {
@@ -110,6 +172,36 @@ public class TimerCommands implements CommandExecutor, TabCompleter {
                     }
                 }
                 return result;
+            } else if (args.length == 2 && args[0].equalsIgnoreCase("exclude")) {
+                List<String> options = new ArrayList<>(List.of("list", "add", "remove"));
+                for (org.bukkit.entity.Player p : org.bukkit.Bukkit.getOnlinePlayers()) {
+                    options.add(p.getName());
+                }
+                List<String> result = new ArrayList<>();
+                for (String opt : options) {
+                    if (opt.toLowerCase().startsWith(args[1].toLowerCase())) {
+                        result.add(opt);
+                    }
+                }
+                return result;
+            } else if (args.length == 3 && args[0].equalsIgnoreCase("exclude")) {
+                if (args[1].equalsIgnoreCase("add")) {
+                    List<String> result = new ArrayList<>();
+                    for (org.bukkit.entity.Player p : org.bukkit.Bukkit.getOnlinePlayers()) {
+                        if (!plugin.isPlayerExcluded(p) && p.getName().toLowerCase().startsWith(args[2].toLowerCase())) {
+                            result.add(p.getName());
+                        }
+                    }
+                    return result;
+                } else if (args[1].equalsIgnoreCase("remove")) {
+                    List<String> result = new ArrayList<>();
+                    for (String name : plugin.getExcludedPlayers()) {
+                        if (name.toLowerCase().startsWith(args[2].toLowerCase())) {
+                            result.add(name);
+                        }
+                    }
+                    return result;
+                }
             }
         } else if (command.getName().equalsIgnoreCase("timermode")) {
             if (args.length == 1) {

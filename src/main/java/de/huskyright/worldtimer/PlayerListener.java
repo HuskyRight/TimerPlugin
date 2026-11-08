@@ -34,6 +34,9 @@ public class PlayerListener implements Listener {
 
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent event) {
+        if (plugin.isPlayerExcluded(event.getPlayer())) {
+            return;
+        }
         if (plugin.isTimerRunning()) {
             plugin.setTimerRunning(false);
             plugin.checkConditionsAndPause();
@@ -45,6 +48,9 @@ public class PlayerListener implements Listener {
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
         if (plugin.isWorldTrulyPaused()) {
+            if (plugin.isPlayerExcluded(event.getPlayer())) {
+                return;
+            }
             if (event.getFrom().getBlockX() != event.getTo().getBlockX() 
                 || event.getFrom().getBlockZ() != event.getTo().getBlockZ()) 
             {

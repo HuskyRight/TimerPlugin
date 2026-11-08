@@ -15,6 +15,11 @@ import org.bukkit.scheduler.BukkitTask;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 
 public class TimerPlugin extends JavaPlugin {
 
@@ -26,6 +31,7 @@ public class TimerPlugin extends JavaPlugin {
     private BossBar timerBossBar;
     private BukkitTask timerTask;
     private WorldManager worldManager;
+    private final Set<String> excludedPlayers = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
 
     @Override
     public void onLoad() {
@@ -88,6 +94,11 @@ public class TimerPlugin extends JavaPlugin {
         this.timeElapsedSeconds = config.getLong("timeElapsedSeconds", 0);
         this.timerRunning = config.getBoolean("timerRunning", false);
         this.requiredPlayers = config.getInt("requiredPlayers", 1);
+        this.excludedPlayers.clear();
+        List<String> excluded = config.getStringList("excludedPlayers");
+        if (excluded != null) {
+            this.excludedPlayers.addAll(excluded);
+        }
         boolean visible = config.getBoolean("bossBarVisible", false);
         if (timerBossBar != null) {
             timerBossBar.setVisible(visible);
@@ -104,6 +115,7 @@ public class TimerPlugin extends JavaPlugin {
         config.set("timeElapsedSeconds", timeElapsedSeconds);
         config.set("timerRunning", timerRunning);
         config.set("requiredPlayers", requiredPlayers);
+        config.set("excludedPlayers", new ArrayList<>(excludedPlayers));
         config.set("bossBarVisible", timerBossBar != null && timerBossBar.isVisible());
         try {
             config.save(file);
@@ -130,9 +142,45 @@ public class TimerPlugin extends JavaPlugin {
     }
 
     public void checkConditionsAndPause() {
-        int onlinePlayers = Bukkit.getOnlinePlayers().size();
-        boolean shouldBePaused = !timerRunning || onlinePlayers < requiredPlayers;
+        long activePlayers = Bukkit.getOnlinePlayers().stream()
+                .filter(p -> !isPlayerExcluded(p))
+                .count();
+        boolean shouldBePaused = !timerRunning || activePlayers < requiredPlayers;
         setWorldPaused(shouldBePaused);
+    }
+
+    public boolean isPlayerExcluded(Player player) {
+        if (player == null) return false;
+        return isPlayerExcluded(player.getName());
+    }
+
+    public boolean isPlayerExcluded(String name) {
+        if (name == null) return false;
+        return excludedPlayers.contains(name);
+    }
+
+    public boolean addExcludedPlayer(String name) {
+        if (name == null || name.isBlank()) return false;
+        boolean added = excludedPlayers.add(name);
+        if (added) {
+            saveTimerData();
+            checkConditionsAndPause();
+        }
+        return added;
+    }
+
+    public boolean removeExcludedPlayer(String name) {
+        if (name == null) return false;
+        boolean removed = excludedPlayers.remove(name);
+        if (removed) {
+            saveTimerData();
+            checkConditionsAndPause();
+        }
+        return removed;
+    }
+
+    public Set<String> getExcludedPlayers() {
+        return Collections.unmodifiableSet(excludedPlayers);
     }
 
     public void setWorldPaused(boolean paused) {

@@ -15,7 +15,7 @@ load: STARTUP
 commands:
   timer:
     description: Steuert den Welt-Timer.
-    usage: "/timer <on|off|start|stop|reset>"
+    usage: "/timer <on|off|start|stop|reset|exclude>"
     permission: worldtimer.admin
   timermode:
     description: Setzt den Spielermodus für den Timer.

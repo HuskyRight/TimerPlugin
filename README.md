@@ -45,6 +45,9 @@
 | `/timer start` | Startet den Timer. Die Welt läuft weiter. |
 | `/timer stop` | Hält den Timer an. Die Welt wird pausiert. |
 | `/timer reset` | Setzt die abgelaufene Zeit auf `00:00:00` zurück. |
+| `/timer exclude <Spieler>` | Schließt einen Spieler vom Timer aus (Toggle). Ausgeschlossene Spieler werden bei pausierter Welt nicht eingefroren (Locked) und zählen nicht zu den aktiven Spielern. |
+| `/timer exclude list` | Listet alle aktuell vom Timer ausgeschlossenen Spieler auf. |
+| `/timer exclude <add\|remove> <Spieler>` | Fügt einen Spieler explizit zur Ausschlussliste hinzu oder entfernt ihn. |
 | `/timermode set <Anzahl>` | Legt fest, wie viele Spieler mindestens online sein müssen, damit der Timer läuft. |
 
 ---
