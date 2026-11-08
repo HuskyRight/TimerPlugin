@@ -7,10 +7,14 @@ import org.bukkit.World;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
+
+import java.io.File;
+import java.io.IOException;
 
 public class TimerPlugin extends JavaPlugin {
 
@@ -21,13 +25,42 @@ public class TimerPlugin extends JavaPlugin {
 
     private BossBar timerBossBar;
     private BukkitTask timerTask;
+    private WorldManager worldManager;
+
+    @Override
+    public void onLoad() {
+        this.worldManager = new WorldManager(this);
+        // Process world reset, rollback or preset load before worlds are loaded by server
+        this.worldManager.processPendingActionOnLoad();
+    }
 
     @Override
     public void onEnable() {
+        if (this.worldManager == null) {
+            this.worldManager = new WorldManager(this);
+        }
+
         timerBossBar = Bukkit.createBossBar("Timer", BarColor.BLUE, BarStyle.SOLID);
-        getCommand("timer").setExecutor(new TimerCommands(this));
-        getCommand("timermode").setExecutor(new TimerCommands(this));
+
+        TimerCommands timerCommands = new TimerCommands(this);
+        if (getCommand("timer") != null) {
+            getCommand("timer").setExecutor(timerCommands);
+            getCommand("timer").setTabCompleter(timerCommands);
+        }
+        if (getCommand("timermode") != null) {
+            getCommand("timermode").setExecutor(timerCommands);
+            getCommand("timermode").setTabCompleter(timerCommands);
+        }
+
+        WorldCommands worldCommands = new WorldCommands(this, worldManager);
+        if (getCommand("world") != null) {
+            getCommand("world").setExecutor(worldCommands);
+            getCommand("world").setTabCompleter(worldCommands);
+        }
+
         getServer().getPluginManager().registerEvents(new PlayerListener(this), this);
+
+        loadTimerData();
         startMainTicker();
         getLogger().info("WorldTimer wurde erfolgreich aktiviert!");
     }
@@ -40,8 +73,43 @@ public class TimerPlugin extends JavaPlugin {
         if (timerBossBar != null) {
             timerBossBar.removeAll();
         }
+        saveTimerData();
         setWorldPaused(false);
         getLogger().info("WorldTimer wurde deaktiviert!");
+    }
+
+    public void loadTimerData() {
+        File file = new File(getDataFolder(), "timer.yml");
+        if (!file.exists()) {
+            updateTimerDisplay();
+            return;
+        }
+        YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
+        this.timeElapsedSeconds = config.getLong("timeElapsedSeconds", 0);
+        this.timerRunning = config.getBoolean("timerRunning", false);
+        this.requiredPlayers = config.getInt("requiredPlayers", 1);
+        boolean visible = config.getBoolean("bossBarVisible", false);
+        if (timerBossBar != null) {
+            timerBossBar.setVisible(visible);
+            updateTimerDisplay();
+        }
+    }
+
+    public void saveTimerData() {
+        File file = new File(getDataFolder(), "timer.yml");
+        if (!getDataFolder().exists()) {
+            getDataFolder().mkdirs();
+        }
+        YamlConfiguration config = new YamlConfiguration();
+        config.set("timeElapsedSeconds", timeElapsedSeconds);
+        config.set("timerRunning", timerRunning);
+        config.set("requiredPlayers", requiredPlayers);
+        config.set("bossBarVisible", timerBossBar != null && timerBossBar.isVisible());
+        try {
+            config.save(file);
+        } catch (IOException e) {
+            getLogger().severe("Konnte timer.yml nicht speichern: " + e.getMessage());
+        }
     }
 
     private void startMainTicker() {
@@ -73,10 +141,12 @@ public class TimerPlugin extends JavaPlugin {
         }
         this.isWorldTrulyPaused = paused;
 
+        if (Bukkit.getWorlds().isEmpty()) {
+            return;
+        }
         World mainWorld = Bukkit.getWorlds().get(0);
 
         mainWorld.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, !paused);
-
         mainWorld.setGameRule(GameRule.RANDOM_TICK_SPEED, paused ? 0 : 3);
         
         for (LivingEntity entity : mainWorld.getLivingEntities()) {
@@ -93,6 +163,7 @@ public class TimerPlugin extends JavaPlugin {
     }
 
     public void updateTimerDisplay() {
+        if (timerBossBar == null) return;
         long hours = timeElapsedSeconds / 3600;
         long minutes = (timeElapsedSeconds % 3600) / 60;
         long seconds = timeElapsedSeconds % 60;
@@ -102,8 +173,11 @@ public class TimerPlugin extends JavaPlugin {
     
     public boolean isTimerRunning() { return timerRunning; }
     public void setTimerRunning(boolean timerRunning) { this.timerRunning = timerRunning; }
+    public long getTimeElapsedSeconds() { return timeElapsedSeconds; }
     public void setTimeElapsedSeconds(long timeElapsedSeconds) { this.timeElapsedSeconds = timeElapsedSeconds; }
+    public int getRequiredPlayers() { return requiredPlayers; }
     public void setRequiredPlayers(int requiredPlayers) { this.requiredPlayers = requiredPlayers; }
     public BossBar getTimerBossBar() { return timerBossBar; }
     public boolean isWorldTrulyPaused() { return isWorldTrulyPaused; }
+    public WorldManager getWorldManager() { return worldManager; }
 }
